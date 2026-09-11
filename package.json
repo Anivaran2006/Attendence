@@ -1,0 +1,35 @@
+{
+  "name": "abes-attendance-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ABES Engineering College Attendance Tracker - Manifest V3 Extension & Web Dashboard",
+  "workspaces": [
+    "shared",
+    "extension",
+    "dashboard"
+  ],
+  "scripts": {
+    "build:shared": "npm --workspace=shared run build",
+    "build:extension": "npm --workspace=extension run build",
+    "build:dashboard": "npm --workspace=dashboard run build",
+    "copy:dashboard": "node scripts/copy-dashboard.cjs",
+    "verify:deploy": "node scripts/package-extension.cjs",
+    "package:zip": "node scripts/package-extension.cjs && powershell Compress-Archive -Path extension/* -DestinationPath abes-attendance-tracker-v1.0.0.zip -Force",
+    "build": "npm run build:shared && npm run build:extension && npm run build:dashboard && npm run copy:dashboard && npm run verify:deploy",
+    "dev:dashboard": "npm --workspace=dashboard run dev",
+    "preview:dashboard": "npm --workspace=dashboard run preview"
+  },
+  "keywords": [
+    "abes",
+    "attendance",
+    "erp",
+    "chrome-extension",
+    "react",
+    "vite"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

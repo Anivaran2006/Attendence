@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ABES Attendance Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-area">
+      <div class="logo-icon">A</div>
+      <div>
+        <div class="title">ABES Attendance</div>
+        <div class="subtitle">ERP Sync Companion</div>
+      </div>
+    </div>
+    <div id="erp-status-badge" class="status-pill">
+      <span id="erp-status-dot" class="status-dot"></span>
+      <span id="erp-status-text">Disconnected</span>
+    </div>
+  </header>
+
+  <!-- Session Expired Warning Banner (Hidden by default) -->
+  <div id="session-expired-banner" class="alert-banner" style="display: none;">
+    <strong>⚠️ ERP Session Expired</strong>
+    <span>Please login to ABES ERP normally to synchronize fresh attendance data.</span>
+    <a id="link-open-erp">Open ABES ERP &rarr;</a>
+  </div>
+
+  <!-- Main Content Card -->
+  <div id="attendance-card" class="content-card" style="display: none;">
+    <div class="pct-circle">
+      <svg viewBox="0 0 100 100">
+        <circle class="pct-circle-bg" cx="50" cy="50" r="42"></circle>
+        <circle id="pct-progress-ring" class="pct-circle-progress" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="31"></circle>
+      </svg>
+      <div class="pct-text-container">
+        <span id="overall-pct" class="pct-val">88%</span>
+        <span class="pct-sub">Overall</span>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Total</div>
+        <div id="stat-total" class="stat-num total">200</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Present</div>
+        <div id="stat-present" class="stat-num present">176</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Absent</div>
+        <div id="stat-absent" class="stat-num absent">24</div>
+      </div>
+    </div>
+
+    <div id="bunk-margin-tip" class="margin-tip">
+      🎯 Safe! You can miss 3 classes and remain above 75%.
+    </div>
+
+    <div id="last-sync-label" class="last-sync">
+      Last synced: Today, 02:25 PM
+    </div>
+  </div>
+
+  <!-- Empty state if no data synced yet -->
+  <div id="empty-state" class="empty-state">
+    <p>No attendance records stored yet.</p>
+    <p style="margin-top: 8px; font-size: 11px;">
+      Log in to <strong>erp.abes.ac.in</strong> and open your attendance page. The extension will automatically capture and retain your records!
+    </p>
+    <button id="btn-load-mock" class="btn-secondary" style="margin-top: 14px;">
+      ⚡ Load Sample Data (ABES Demo)
+    </button>
+  </div>
+
+  <!-- Action Buttons -->
+  <footer class="btn-group">
+    <button id="btn-open-dashboard" class="btn-primary">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+      Open Full Dashboard
+    </button>
+    <button id="btn-sync-tab" class="btn-secondary">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+      Sync Active ERP Tab
+    </button>
+  </footer>
+
+  <script type="module" src="../dist/popup.js"></script>
+</body>
+</html>

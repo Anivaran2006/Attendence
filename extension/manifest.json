@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "ABES Attendance Tracker",
+  "version": "1.0.0",
+  "description": "Secure local-first attendance viewer and bunk calculator for ABES Engineering College ERP (erp.abes.ac.in).",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "ABES Attendance Tracker",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://erp.abes.ac.in/*",
+        "https://erp.abes.ac.in/*"
+      ],
+      "js": [
+        "dist/content.js"
+      ],
+      "css": [
+        "src/content/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://erp.abes.ac.in/*",
+    "https://erp.abes.ac.in/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "dashboard/*",
+        "icons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
