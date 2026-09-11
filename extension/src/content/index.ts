@@ -14,6 +14,14 @@ class ABESContentController {
     this.init();
   }
 
+  private isContextValid(): boolean {
+    try {
+      return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id);
+    } catch {
+      return false;
+    }
+  }
+
   private init(): void {
     console.log('[ABES Attendance Tracker] Content script initialized on', window.location.href);
 
@@ -23,20 +31,25 @@ class ABESContentController {
     // Listen for DOM changes (ASP.NET UpdatePanels or client navigation)
     this.setupMutationObserver();
 
-    // Listen for extension messages
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-      chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
-        if (message.type === 'TRIGGER_MANUAL_SYNC') {
-          const result = this.checkAndParse(true);
-          sendResponse({ success: true, result });
-        }
-        return true;
-      });
+    // Listen for extension messages safely
+    try {
+      if (this.isContextValid() && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
+          if (message.type === 'TRIGGER_MANUAL_SYNC') {
+            const result = this.checkAndParse(true);
+            sendResponse({ success: true, result });
+          }
+          return true;
+        });
+      }
+    } catch (e) {
+      console.warn('[ABES Attendance Tracker] Message listener setup warning:', e);
     }
   }
 
   private checkAndParse(forceNotify = false): ParseResult {
     const result = this.parser.parseAttendance(document, window.location.href);
+    console.log('[ABES Attendance Tracker] Parse status:', result.status);
 
     if (result.status === 'session_expired') {
       this.keepAlive.stop();
@@ -47,6 +60,7 @@ class ABESContentController {
 
     if (result.status === 'success') {
       const data = result.data;
+      console.log(`[ABES Attendance Tracker] Successfully parsed ${data.subjects.length} subjects! Overall: ${data.overall.percentage}%`);
       if (!this.hasSynced || forceNotify) {
         this.hasSynced = true;
         this.sendAttendanceToBackground(data);
@@ -78,27 +92,45 @@ class ABESContentController {
       }, 600);
     });
 
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-  }
-
-  private sendAttendanceToBackground(payload: any): void {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage<ExtensionMessage>({
-        type: 'ATTENDANCE_PARSED',
-        payload,
+    if (document.body) {
+      this.observer.observe(document.body, {
+        childList: true,
+        subtree: true,
       });
     }
   }
 
+  private sendAttendanceToBackground(payload: any): void {
+    try {
+      if (this.isContextValid() && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage<ExtensionMessage>({
+          type: 'ATTENDANCE_PARSED',
+          payload,
+        }, () => {
+          if (chrome.runtime?.lastError) {
+            // Ignore benign lastError on send
+          }
+        });
+      } else {
+        console.info('[ABES Attendance Tracker] Extension reloaded in background. Refresh this ERP page (F5) to complete synchronization.');
+      }
+    } catch (err) {
+      console.warn('[ABES Attendance Tracker] Context invalidated. Refresh page to reconnect:', err);
+    }
+  }
+
   private notifySessionExpired(reason: string): void {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage<ExtensionMessage>({
-        type: 'SESSION_EXPIRED',
-        payload: { url: window.location.href, timestamp: Date.now() },
-      });
+    try {
+      if (this.isContextValid() && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage<ExtensionMessage>({
+          type: 'SESSION_EXPIRED',
+          payload: { url: window.location.href, timestamp: Date.now() },
+        }, () => {
+          if (chrome.runtime?.lastError) { /* ignore */ }
+        });
+      }
+    } catch (err) {
+      console.warn('[ABES Attendance Tracker] Context invalidated:', err);
     }
   }
 
