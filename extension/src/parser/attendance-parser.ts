@@ -119,7 +119,7 @@ export class ABESAttendanceParser {
     let headerRowIndex = -1;
     let colIndices: ColumnIndices | null = null;
 
-    for (let r = 0; r < Math.min(rows.length, 4); r++) {
+    for (let r = 0; r < Math.min(rows.length, 5); r++) {
       const indices = this.matchHeaderColumns(rows[r]);
       if (indices) {
         headerRowIndex = r;
@@ -129,7 +129,14 @@ export class ABESAttendanceParser {
     }
 
     if (!colIndices || headerRowIndex === -1) {
-      return null;
+      // Heuristic fallback: inspect data rows directly for ABES subject code patterns
+      const detected = this.detectFromDataRows(rows);
+      if (detected) {
+        headerRowIndex = detected.headerRowIndex;
+        colIndices = detected.colIndices;
+      } else {
+        return null;
+      }
     }
 
     const subjects: SubjectAttendance[] = [];
@@ -280,6 +287,49 @@ export class ABESAttendanceParser {
     return null;
   }
 
+  private detectFromDataRows(rows: HTMLTableRowElement[]): { headerRowIndex: number; colIndices: ColumnIndices } | null {
+    for (let r = 0; r < rows.length; r++) {
+      const cells = Array.from(rows[r].cells).map((c) =>
+        (c.textContent || '').replace(/[\u00a0\u200B\s]+/g, ' ').trim()
+      );
+      // Check if any cell looks like an ABES course code: e.g. 25AS301, 25CS301, CS301
+      const codeIdx = cells.findIndex((txt) => /^[0-9]{2}[A-Za-z]{2,3}[0-9]{3}[A-Za-z]?$/i.test(txt));
+      if (codeIdx !== -1) {
+        let nameIdx = codeIdx + 1;
+        if (nameIdx >= cells.length || /^\d+$/.test(cells[nameIdx])) {
+          nameIdx = -1;
+        }
+
+        const numericIndices: number[] = [];
+        for (let i = 0; i < cells.length; i++) {
+          if (i !== codeIdx && i !== nameIdx && /^\d+(\.\d+)?%?$/.test(cells[i])) {
+            numericIndices.push(i);
+          }
+        }
+
+        if (numericIndices.length >= 2) {
+          const totalIdx = numericIndices[0];
+          const presentIdx = numericIndices[1];
+          const absentIdx = numericIndices.length >= 3 ? numericIndices[2] : -1;
+          const pctIdx = numericIndices.length >= 4 ? numericIndices[3] : -1;
+
+          return {
+            headerRowIndex: Math.max(0, r - 1),
+            colIndices: {
+              code: codeIdx,
+              name: nameIdx,
+              total: totalIdx,
+              present: presentIdx,
+              absent: absentIdx,
+              percentage: pctIdx,
+            },
+          };
+        }
+      }
+    }
+    return null;
+  }
+
   private cleanInt(val: string | undefined): number {
     if (!val) return 0;
     const match = val.replace(/,/g, '').match(/\d+/);
@@ -293,6 +343,13 @@ export class ABESAttendanceParser {
   }
 
   private extractSemester(doc: Document): string {
+    const select = doc.querySelector('select[name*="Semester" i], select[id*="Semester" i], #ddlSemester') as HTMLSelectElement | null;
+    if (select) {
+      const selectedOpt = select.options?.[select.selectedIndex];
+      if (selectedOpt && selectedOpt.text) {
+        return selectedOpt.text.trim();
+      }
+    }
     for (const sel of this.selectors.semesterElement) {
       const el = doc.querySelector(sel);
       if (el && el.textContent) {
@@ -309,13 +366,21 @@ export class ABESAttendanceParser {
     let name: string | undefined;
     let rollNumber: string | undefined;
 
+    const userBar = doc.querySelector('.user-profile, .user-name, [id*="UserName" i], [id*="StudentName" i], .dropdown-user, .navbar-custom');
+    if (userBar && userBar.textContent) {
+      const match = userBar.textContent.match(/[A-Za-z\s]{4,30}/);
+      if (match && !/dashboard|campus|attendance/i.test(match[0])) {
+        name = match[0].trim();
+      }
+    }
+
     for (const sel of this.selectors.studentInfoElement) {
       const el = doc.querySelector(sel);
       if (el && el.textContent) {
         const text = el.textContent.trim();
         if (/\d{10,13}/.test(text) && !rollNumber) {
           rollNumber = text.match(/\d{10,13}/)?.[0];
-        } else if (!name && text.length > 2 && text.length < 50) {
+        } else if (!name && text.length > 2 && text.length < 50 && !/attendance|semester/i.test(text)) {
           name = text;
         }
       }

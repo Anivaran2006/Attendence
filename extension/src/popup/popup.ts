@@ -126,13 +126,41 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
 
+        // Try sending message first
         chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_MANUAL_SYNC' }, (response) => {
-          if (btnSyncTab) btnSyncTab.innerText = 'Sync Active ERP Tab';
-          if (chrome.runtime.lastError) {
-            alert('Could not communicate with page. Please refresh the ABES ERP tab.');
+          if (!chrome.runtime.lastError && response?.success) {
+            if (btnSyncTab) btnSyncTab.innerText = '✓ Synced!';
+            setTimeout(() => { if (btnSyncTab) btnSyncTab.innerText = 'Sync Active ERP Tab'; }, 2000);
+            refreshUI();
             return;
           }
-          refreshUI();
+
+          // If content script was not injected yet (tab was open before extension install),
+          // programmatically inject dist/content.js now using chrome.scripting
+          if (chrome.scripting) {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id, allFrames: true },
+              files: ['dist/content.js']
+            }, () => {
+              if (chrome.runtime.lastError) {
+                alert('Please refresh the ABES ERP tab (press F5 on ERP) and try again.');
+                if (btnSyncTab) btnSyncTab.innerText = 'Sync Active ERP Tab';
+                return;
+              }
+
+              // Give script a moment to initialize then trigger sync
+              setTimeout(() => {
+                chrome.tabs.sendMessage(tab.id!, { type: 'TRIGGER_MANUAL_SYNC' }, () => {
+                  if (btnSyncTab) btnSyncTab.innerText = '✓ Synced!';
+                  setTimeout(() => { if (btnSyncTab) btnSyncTab.innerText = 'Sync Active ERP Tab'; }, 2000);
+                  refreshUI();
+                });
+              }, 400);
+            });
+          } else {
+            alert('Please refresh the ABES ERP tab (press F5 on the ERP page) to connect.');
+            if (btnSyncTab) btnSyncTab.innerText = 'Sync Active ERP Tab';
+          }
         });
       });
     } else {
