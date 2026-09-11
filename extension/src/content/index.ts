@@ -84,9 +84,13 @@ class ABESContentController {
   private setupMutationObserver(): void {
     let timeoutId: number | null = null;
     this.observer = new MutationObserver(() => {
+      if (!this.isContextValid()) {
+        this.observer?.disconnect();
+        return;
+      }
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = window.setTimeout(() => {
-        if (!this.hasSynced) {
+        if (!this.hasSynced && this.isContextValid()) {
           this.checkAndParse();
         }
       }, 600);
@@ -112,7 +116,7 @@ class ABESContentController {
           }
         });
       } else {
-        console.info('[ABES Attendance Tracker] Extension reloaded in background. Refresh this ERP page (F5) to complete synchronization.');
+        console.info('[ABES Attendance Tracker] Extension reloaded. Refresh this ERP page (F5) to complete synchronization.');
       }
     } catch (err) {
       console.warn('[ABES Attendance Tracker] Context invalidated. Refresh page to reconnect:', err);
@@ -159,7 +163,7 @@ class ABESContentController {
       </div>
     `;
 
-    // Attach click events
+    // Attach click events safely
     const closeBtn = container.querySelector('#abes-btn-pill-close');
     closeBtn?.addEventListener('click', () => {
       container?.remove();
@@ -167,11 +171,15 @@ class ABESContentController {
 
     const openBtn = container.querySelector('#abes-btn-open-dash');
     openBtn?.addEventListener('click', () => {
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-        window.open(chrome.runtime.getURL('dashboard/index.html'), '_blank');
-      } else {
-        window.open('http://localhost:5173', '_blank');
+      try {
+        if (this.isContextValid() && chrome.runtime.getURL) {
+          window.open(chrome.runtime.getURL('dashboard/index.html'), '_blank');
+          return;
+        }
+      } catch {
+        // Context invalidated, fall back to local dev or vercel
       }
+      window.open('http://localhost:5173', '_blank');
     });
 
     // Auto dismiss after 8 seconds
@@ -184,9 +192,15 @@ class ABESContentController {
   }
 }
 
-// Instantiate on document ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new ABESContentController());
-} else {
-  new ABESContentController();
+// Instantiate on document ready safely
+try {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      try { new ABESContentController(); } catch (e) { console.warn('[ABES Attendance Tracker] Init error:', e); }
+    });
+  } else {
+    new ABESContentController();
+  }
+} catch (e) {
+  console.warn('[ABES Attendance Tracker] Setup error:', e);
 }
