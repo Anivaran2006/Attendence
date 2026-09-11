@@ -5,7 +5,8 @@ node_modules/
 
 # Production build outputs (can keep or ignore, dashboard/dist is built from source)
 dist/
-# Note: we can keep extension/dist and extension/dashboard if users want to clone and load unpacked without building
+!extension/dist/**
+!extension/dashboard/**
 dashboard/dist/
 shared/dist/
 
