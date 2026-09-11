@@ -9,12 +9,14 @@ import { SubjectTable } from './components/SubjectTable.js';
 import { AttendanceSimulator } from './components/AttendanceSimulator.js';
 import { HistoryTimeline } from './components/HistoryTimeline.js';
 import { SyncInstructionModal } from './components/SyncInstructionModal.js';
+import { EditAttendanceModal } from './components/EditAttendanceModal.js';
 
 export const App: React.FC = () => {
   const [store, setStore] = useState<AttendanceStoreData | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [selectedSubjectForSim, setSelectedSubjectForSim] = useState<SubjectAttendance | null>(null);
   const [isSyncHelpOpen, setIsSyncHelpOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     // Initial load
@@ -54,6 +56,20 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSaveEditedAttendance = async (newSnapshot: any) => {
+    if (!store) return;
+    const updatedHistory = [newSnapshot, ...store.history.slice(0, 49)];
+    const updatedStore: AttendanceStoreData = {
+      ...store,
+      latest: newSnapshot,
+      history: updatedHistory,
+      lastSyncTime: newSnapshot.timestamp,
+    };
+    await DashboardStorageBridge.saveStore(updatedStore);
+    setStore(updatedStore);
+    setSelectedSubjectForSim(null);
+  };
+
   if (!store || !store.latest) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-mesh-gradient">
@@ -88,6 +104,7 @@ export const App: React.FC = () => {
         onResetDemo={handleResetDemo}
         onOpenSyncHelp={() => setIsSyncHelpOpen(true)}
         onExportBackup={handleExportBackup}
+        onOpenEditModal={() => setIsEditModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -150,6 +167,14 @@ export const App: React.FC = () => {
       <SyncInstructionModal
         isOpen={isSyncHelpOpen}
         onClose={() => setIsSyncHelpOpen(false)}
+      />
+
+      {/* Edit Attendance Modal */}
+      <EditAttendanceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        currentSnapshot={latest}
+        onSave={handleSaveEditedAttendance}
       />
     </div>
   );

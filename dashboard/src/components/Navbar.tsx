@@ -1,5 +1,4 @@
-import React from 'react';
-import { ShieldCheck, RefreshCw, Sun, Moon, Download, HelpCircle, AlertTriangle, Sparkles } from 'lucide-react';
+import { ShieldCheck, RefreshCw, Sun, Moon, Download, HelpCircle, AlertTriangle, Sparkles, Edit3 } from 'lucide-react';
 import { AttendanceStoreData } from '../../../shared/src/types.js';
 
 interface NavbarProps {
@@ -9,6 +8,7 @@ interface NavbarProps {
   onResetDemo: () => void;
   onOpenSyncHelp: () => void;
   onExportBackup: () => void;
+  onOpenEditModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -18,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetDemo,
   onOpenSyncHelp,
   onExportBackup,
+  onOpenEditModal,
 }) => {
   const latest = store.latest;
 
@@ -105,6 +106,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Export JSON Backup"
           >
             <Download className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={onOpenEditModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:text-white text-xs font-bold transition-all hover:scale-105 shadow-glow-purple"
+            title="Edit My Attendance Counts Directly"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Edit Attendance</span>
           </button>
 
           <button
